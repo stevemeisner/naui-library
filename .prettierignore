@@ -1,0 +1,18 @@
+# Generated documentation
+storybook-static/
+CHANGELOG.md
+
+# Test artifacts
+test-results/
+playwright-report/
+
+dist
+node_modules
+coverage
+.storybook
+.next
+build
+.git
+pnpm-lock.yaml
+package-lock.json
+yarn.lock

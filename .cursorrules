@@ -1,0 +1,56 @@
+# UI Library Development Rules
+
+## Component Standards
+- Follow TypeScript strict mode
+- Use functional components with hooks
+- Implement proper ARIA attributes
+- Include proper type exports
+- Follow TailwindCSS class naming conventions
+- Ensure components are tree-shakeable
+- Must be keyboard and screen reader accessible
+
+## Testing Requirements
+- Unit tests with React Testing Library
+- E2E tests with Playwright
+- Accessibility tests with axe-core
+- Visual regression tests where applicable
+
+## File Structure
+- Components follow pattern: {ComponentName}/{ComponentName}.{type}.{ext}
+- Required files: .tsx, .test.tsx, .stories.tsx, index.ts
+- E2E tests in e2e/ directory
+
+## Development Workflow
+1. "Create [component]"
+   - Generates base component with tests and stories
+2. "Enhance [component]"
+   - Adds variants, states, or features
+3. "Review [component]"
+   - Tests, performance, bundle size
+4. "Debug [component]"
+   - Fixes issues, improves behavior
+
+## Example Requests
+```
+"Create a Modal component"
+"Enhance Button with loading state"
+"Review Dropdown implementation"
+"Debug Form validation"
+```
+
+## Documentation Requirements
+- JSDoc comments for components
+- Props documentation with examples
+- Performance considerations
+
+## Implicit Requirements
+Every component and feature request automatically includes:
+- WCAG 2.1 AA compliance
+- Keyboard navigation support
+- Screen reader compatibility
+- Proper ARIA attributes
+- Color contrast requirements
+- Focus management
+- Semantic HTML structure
+- Test coverage
+- Performance optimization

@@ -1,0 +1,89 @@
+name: Visual Testing
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    env:
+      PNPM_HOME: ${{ github.workspace }}/.pnpm-store
+      CI: ''
+      NPM_CONFIG_FROZEN_LOCKFILE: false
+      PNPM_FROZEN_LOCKFILE: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
+
+      # Cache management
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            ~/.cache/Cypress
+            ~/.cache/ms-playwright
+            ~/.cache/puppeteer
+          key: ${{ runner.os }}-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-modules-
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          if [ ! -d "node_modules" ]; then
+            echo "Installing dependencies without frozen lockfile..."
+            pnpm config set frozen-lockfile false
+            pnpm install --no-frozen-lockfile --ignore-scripts
+            echo "Running postinstall scripts..."
+            pnpm rebuild
+          else
+            echo "Using cached node_modules"
+          fi
+
+      - name: Install Playwright browsers
+        run: |
+          if [ ! -d "~/.cache/ms-playwright" ]; then
+            pnpm exec playwright install --with-deps chromium
+          else
+            echo "Using cached Playwright browsers"
+          fi
+
+      - name: Run visual tests
+        run: pnpm exec playwright test --project=chromium-visual
+
+      - name: Upload visual test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-test-results
+          path: |
+            test-results
+            playwright-report
+          retention-days: 30

@@ -1,0 +1,33 @@
+{
+  "prettier.enableDebugLogs": false,
+  "prettier.withNodeModules": false,
+  "prettier.documentSelectors": ["**/*.{ts,tsx,js,jsx,json,md}"],
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "prettier.requireConfig": true,
+  "editor.formatOnSaveMode": "file",
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "javascript.format.enable": false,
+  "typescript.format.enable": false,
+  "prettier.semi": false,
+  "javascript.format.semicolons": "remove",
+  "typescript.format.semicolons": "remove"
+}

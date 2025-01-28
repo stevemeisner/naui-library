@@ -1,0 +1,43 @@
+# Source
+src/
+e2e/
+
+# Tests
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+coverage/
+.nyc_output/
+
+# Config files
+.storybook/
+.github/
+.vscode/
+.idea/
+*.config.js
+*.config.ts
+tsconfig*.json
+.eslintrc*
+.prettierrc*
+.cursorrules
+
+# Docs
+docs/
+*.md
+!README.md
+
+# Development
+node_modules/
+.git/
+.gitignore
+.env*
+
+# Storybook
+storybook-static/
+
+# Misc
+.DS_Store
+*.log
+.cache/
+dist/*.map
