@@ -1,6 +1,6 @@
 import { test as base, expect } from '@playwright/test'
 
-import { testAccessibility } from './test-utils'
+import { goToStory, testAccessibility } from './test-utils'
 
 /**
  * E2E tests for the Button component.
@@ -8,39 +8,43 @@ import { testAccessibility } from './test-utils'
  * including accessibility, visual appearance, and user interactions.
  */
 
+const STORY_ID = 'components-button'
+
 const test = base.extend({
   page: async ({ page }, use) => {
-    await page.goto('http://localhost:5173/button')
+    await goToStory(page, `${STORY_ID}--primary`)
     await use(page)
   },
 })
 
 test.describe('Button Component', () => {
   test('renders variants correctly', async ({ page }) => {
-    const primaryButton = page.getByTestId('primary')
-    const secondaryButton = page.getByTestId('secondary')
-
+    const primaryButton = page.getByRole('button', { name: 'Button' })
     await expect(primaryButton).toBeVisible()
-    await expect(secondaryButton).toBeVisible()
-
     await expect(primaryButton).toHaveClass(/bg-primary-600/)
+
+    await goToStory(page, `${STORY_ID}--secondary`)
+    const secondaryButton = page.getByRole('button', { name: 'Button' })
+    await expect(secondaryButton).toBeVisible()
     await expect(secondaryButton).toHaveClass(/bg-secondary-600/)
   })
 
   test('handles click events', async ({ page }) => {
-    const button = page.getByTestId('primary')
+    const button = page.getByRole('button', { name: 'Button' })
     await button.click()
   })
 
   test('shows loading state with proper ARIA attributes', async ({ page }) => {
-    const button = page.getByTestId('loading')
+    await goToStory(page, `${STORY_ID}--loading`)
+    const button = page.getByRole('button')
     await expect(button).toHaveAttribute('aria-busy', 'true')
     await expect(button).toHaveAttribute('aria-disabled', 'true')
     await expect(button).toBeDisabled()
   })
 
   test('handles disabled state', async ({ page }) => {
-    const button = page.getByTestId('disabled')
+    await goToStory(page, `${STORY_ID}--disabled`)
+    const button = page.getByRole('button')
     await expect(button).toBeDisabled()
     await expect(button).toHaveAttribute('aria-disabled', 'true')
   })
@@ -50,7 +54,7 @@ test.describe('Button Component', () => {
   })
 
   test('is keyboard accessible', async ({ page }) => {
-    const button = page.getByTestId('primary')
+    const button = page.getByRole('button', { name: 'Button' })
     await button.focus()
     await expect(button).toBeFocused()
 

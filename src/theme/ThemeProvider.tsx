@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useEffect } from 'react'
+import React, { createContext, useContext, useLayoutEffect } from 'react'
+
+import { defaultTheme } from './theme'
 
 export interface ThemeColors {
   primary?: {
@@ -47,7 +49,7 @@ export interface ThemeConfig {
   }
 }
 
-const ThemeContext = createContext<ThemeConfig>({})
+const ThemeContext = createContext<ThemeConfig>(defaultTheme)
 
 export const useTheme = () => useContext(ThemeContext)
 
@@ -56,62 +58,67 @@ interface ThemeProviderProps {
   children: React.ReactNode
 }
 
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({ theme = {}, children }) => {
-  useEffect(() => {
-    const root = document.documentElement
+const applyTheme = (theme: ThemeConfig) => {
+  const root = document.documentElement
 
-    // Update color variables
-    if (theme.colors?.primary) {
-      Object.entries(theme.colors.primary).forEach(([key, value]) => {
-        if (value) {
-          root.style.setProperty(`--color-primary-${key}`, value)
-        }
-      })
-    }
+  // Update color variables
+  if (theme.colors?.primary) {
+    Object.entries(theme.colors.primary).forEach(([key, value]) => {
+      if (value) {
+        root.style.setProperty(`--color-primary-${key}`, value)
+      }
+    })
+  }
 
-    if (theme.colors?.secondary) {
-      Object.entries(theme.colors.secondary).forEach(([key, value]) => {
-        if (value) {
-          root.style.setProperty(`--color-secondary-${key}`, value)
-        }
-      })
-    }
+  if (theme.colors?.secondary) {
+    Object.entries(theme.colors.secondary).forEach(([key, value]) => {
+      if (value) {
+        root.style.setProperty(`--color-secondary-${key}`, value)
+      }
+    })
+  }
 
-    // Update semantic colors
-    if (theme.colors?.success) {
-      root.style.setProperty('--color-success', theme.colors.success)
-    }
-    if (theme.colors?.error) {
-      root.style.setProperty('--color-error', theme.colors.error)
-    }
-    if (theme.colors?.warning) {
-      root.style.setProperty('--color-warning', theme.colors.warning)
-    }
-    if (theme.colors?.info) {
-      root.style.setProperty('--color-info', theme.colors.info)
-    }
+  // Update semantic colors
+  if (theme.colors?.success) {
+    root.style.setProperty('--color-success', theme.colors.success)
+  }
+  if (theme.colors?.error) {
+    root.style.setProperty('--color-error', theme.colors.error)
+  }
+  if (theme.colors?.warning) {
+    root.style.setProperty('--color-warning', theme.colors.warning)
+  }
+  if (theme.colors?.info) {
+    root.style.setProperty('--color-info', theme.colors.info)
+  }
 
-    // Update border radius
-    if (theme.borderRadius?.button) {
-      root.style.setProperty('--button-radius', theme.borderRadius.button)
-    }
-    if (theme.borderRadius?.input) {
-      root.style.setProperty('--input-radius', theme.borderRadius.input)
-    }
-    if (theme.borderRadius?.card) {
-      root.style.setProperty('--card-radius', theme.borderRadius.card)
-    }
+  // Update border radius
+  if (theme.borderRadius?.button) {
+    root.style.setProperty('--button-radius', theme.borderRadius.button)
+  }
+  if (theme.borderRadius?.input) {
+    root.style.setProperty('--input-radius', theme.borderRadius.input)
+  }
+  if (theme.borderRadius?.card) {
+    root.style.setProperty('--card-radius', theme.borderRadius.card)
+  }
 
-    // Update transitions
-    if (theme.transitions?.fast) {
-      root.style.setProperty('--transition-fast', theme.transitions.fast)
-    }
-    if (theme.transitions?.normal) {
-      root.style.setProperty('--transition-normal', theme.transitions.normal)
-    }
-    if (theme.transitions?.slow) {
-      root.style.setProperty('--transition-slow', theme.transitions.slow)
-    }
+  // Update transitions
+  if (theme.transitions?.fast) {
+    root.style.setProperty('--transition-fast', theme.transitions.fast)
+  }
+  if (theme.transitions?.normal) {
+    root.style.setProperty('--transition-normal', theme.transitions.normal)
+  }
+  if (theme.transitions?.slow) {
+    root.style.setProperty('--transition-slow', theme.transitions.slow)
+  }
+}
+
+export const ThemeProvider: React.FC<ThemeProviderProps> = ({ theme = defaultTheme, children }) => {
+  // Apply theme immediately to prevent flash
+  useLayoutEffect(() => {
+    applyTheme(theme)
   }, [theme])
 
   return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>

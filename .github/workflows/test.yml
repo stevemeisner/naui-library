@@ -8,7 +8,8 @@ on:
 
 env:
   CI: true
-  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1 # We'll install browsers separately
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+  NODE_ENV: test
 
 jobs:
   test:
@@ -32,8 +33,8 @@ jobs:
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - uses: actions/cache@v4
-        name: Setup pnpm cache
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -44,7 +45,10 @@ jobs:
         run: pnpm install
 
       - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps
+
+      - name: Install http-server
+        run: pnpm add -D http-server
 
       - name: Run lint
         run: pnpm lint
@@ -55,15 +59,44 @@ jobs:
       - name: Run unit tests
         run: pnpm test:unit:coverage
 
-      - name: Build library and test pages
+      - name: Build Storybook
+        run: pnpm build-storybook
+
+      - name: Start Storybook static server
         run: |
-          pnpm build
-          pnpm vite build e2e/test-pages --config e2e/test-pages/vite.config.ts
+          # Install netcat for port checking
+          sudo apt-get update && sudo apt-get install -y netcat-openbsd
+
+          npx http-server storybook-static -p 6006 &
+          echo $! > .server-pid
+
+          # Wait for server to be ready
+          echo "Waiting for Storybook static server..."
+          timeout=30
+          while ! nc -z localhost 6006; do
+            if [ $timeout -le 0 ]; then
+              echo "Timed out waiting for static server"
+              kill $(cat .server-pid)
+              exit 1
+            fi
+            timeout=$((timeout-1))
+            sleep 1
+          done
+          echo "✅ Static server is ready!"
 
       - name: Run E2E tests
-        run: pnpm exec playwright test
+        run: |
+          PLAYWRIGHT_TEST_BASE_URL=http://localhost:6006 pnpm exec playwright test --project=chromium
         env:
           NODE_ENV: test
+
+      - name: Stop static server
+        if: always()
+        run: |
+          if [ -f .server-pid ]; then
+            kill $(cat .server-pid) || true
+            rm .server-pid
+          fi
 
       - name: Upload test results
         if: always()
@@ -76,6 +109,57 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
+      - name: Create Test Summary
+        if: always() && github.event_name == 'pull_request'
+        id: test-summary
+        run: |
+          echo "Creating test summary..."
+
+          # Get unit test results
+          UNIT_TESTS=$(cat coverage/coverage-summary.json 2>/dev/null || echo '{"total":{"lines":{"pct":0},"statements":{"pct":0},"functions":{"pct":0},"branches":{"pct":0}}}')
+
+          # Get E2E test results
+          E2E_RESULTS=$(cat playwright-report/results.json 2>/dev/null || echo '{"stats":{"total":0,"passed":0,"failed":0,"skipped":0}}')
+
+          # Create summary markdown
+          echo "## 🧪 Test Results Summary" > test-summary.md
+          echo "" >> test-summary.md
+          echo "### Unit Tests" >> test-summary.md
+          echo "- Coverage:" >> test-summary.md
+          echo "  - Lines: $(echo $UNIT_TESTS | jq -r '.total.lines.pct')%" >> test-summary.md
+          echo "  - Functions: $(echo $UNIT_TESTS | jq -r '.total.functions.pct')%" >> test-summary.md
+          echo "  - Branches: $(echo $UNIT_TESTS | jq -r '.total.branches.pct')%" >> test-summary.md
+          echo "" >> test-summary.md
+          echo "### E2E Tests" >> test-summary.md
+          echo "- Total: $(echo $E2E_RESULTS | jq -r '.stats.total')" >> test-summary.md
+          echo "- ✅ Passed: $(echo $E2E_RESULTS | jq -r '.stats.passed')" >> test-summary.md
+          echo "- ❌ Failed: $(echo $E2E_RESULTS | jq -r '.stats.failed')" >> test-summary.md
+          echo "- ⏭️ Skipped: $(echo $E2E_RESULTS | jq -r '.stats.skipped')" >> test-summary.md
+
+          if [ -f "playwright-report/index.html" ]; then
+            echo "" >> test-summary.md
+            echo "### 📊 Detailed Reports" >> test-summary.md
+            echo "- [Full Test Report](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})" >> test-summary.md
+          fi
+
+      - name: Find Comment
+        uses: peter-evans/find-comment@v3
+        if: always() && github.event_name == 'pull_request'
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '## 🧪 Test Results Summary'
+
+      - name: Create or Update Comment
+        uses: peter-evans/create-or-update-comment@v4
+        if: always() && github.event_name == 'pull_request'
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-file: test-summary.md
+          edit-mode: replace
+
       - name: Cleanup build artifacts
         if: always()
         run: |
@@ -83,3 +167,4 @@ jobs:
           rm -rf storybook-static
           rm -rf playwright-report
           rm -rf test-results
+          rm -f test-summary.md

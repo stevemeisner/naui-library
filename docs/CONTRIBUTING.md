@@ -1,191 +1,138 @@
-# Contributing to the UI Library
+# Contributing to NAUI
 
-## Development Setup
+Thank you for your interest in contributing to NAUI! This guide will help you get started with development.
 
-1. Clone the repository:
+## 🚀 Quick Setup
 
-```bash
-git clone https://github.com/your-org/ui-library.git
-cd ui-library
-```
-
-2. Install dependencies:
+1. **Clone and Install**
 
 ```bash
+git clone https://github.com/your-org/naui-library.git
+cd naui-library
 pnpm install
 ```
 
-3. Start the development environment:
+2. **Start Development**
 
 ```bash
-pnpm dev
+pnpm dev  # Starts Storybook
 ```
 
-## Project Structure
+3. **Open Storybook**
+
+```
+http://localhost:6006
+```
+
+## 📁 Project Structure
 
 ```
 src/
 ├── components/        # React components
 │   └── ComponentName/
-│       ├── ComponentName.tsx
-│       ├── ComponentName.test.tsx
-│       ├── ComponentName.stories.tsx
-│       └── index.ts
+│       ├── ComponentName.tsx      # Component implementation
+│       ├── ComponentName.test.tsx # Unit tests
+│       ├── ComponentName.stories.tsx # Storybook stories
+│       └── index.ts                # Public exports
 ├── theme/            # Theming system
-│   ├── ThemeProvider.tsx
-│   └── index.ts
 ├── utils/           # Utility functions
-├── styles/          # Global styles
-└── test/            # Test utilities
+└── styles/          # Global styles
+e2e/                # Test files
+├── ComponentName.spec.ts    # E2E tests
+└── ComponentName.visual.ts  # Visual tests
 ```
 
-## Component Development Guidelines
+## 🧩 Component Development
 
-1. **File Structure**
+### 1. Component Guidelines
 
-   - Each component should be in its own directory
-   - Include component, test, stories, and index files
-   - Follow TypeScript strict mode
-   - Implement proper ARIA attributes
+- Use functional components with hooks
+- Follow TypeScript strict mode
+- Implement proper ARIA attributes
+- Include proper type exports
+- Follow TailwindCSS class naming
+- Ensure components are tree-shakeable
+- Must be keyboard and screen reader accessible
 
-2. **Testing Requirements**
+### 2. Required Files
 
-   - Unit tests with React Testing Library
-   - E2E tests with Playwright
-   - Accessibility tests with axe-core
-   - Visual regression tests where applicable
+Each component needs:
 
-3. **Theming Integration**
-   - Use CSS variables for themeable properties
-   - Access theme values through the `useTheme` hook
-   - Support all color variants (50-950)
-   - Include proper fallbacks
+```
+ComponentName/
+├── ComponentName.tsx        # Implementation
+├── ComponentName.test.tsx   # Unit tests
+├── ComponentName.stories.tsx # Storybook stories
+└── index.ts                # Public exports
+```
 
-## Creating a New Component
+### 3. Testing Requirements
 
-1. Use the component generator:
+Every component must have:
+
+- Unit tests (React Testing Library)
+- E2E tests (Playwright)
+- Visual tests (Playwright)
+- Accessibility tests (axe-core)
+
+## 🧪 Development Workflow
+
+### 1. Creating Components
+
+1. Create component directory and files
+2. Implement component with proper types
+3. Add unit tests
+4. Create Storybook stories
+5. Add E2E and visual tests
+6. Document props and usage
+
+### 2. Testing Process
 
 ```bash
-pnpm create-component ComponentName
+# During development
+pnpm dev              # Start Storybook
+pnpm test:unit:watch  # Watch unit tests
+
+# Before committing
+pnpm check            # Run all checks
+pnpm fix              # Fix formatting
+
+# Visual testing
+pnpm test:visual              # Check for changes
+pnpm test:visual:update       # Update snapshots
 ```
 
-2. Implement the component following the template:
+### 3. Pull Request Process
 
-```tsx
-import { cn } from '../../utils';
-import { useTheme } from '../../theme';
+1. Create feature branch
+2. Make changes following guidelines
+3. Run all checks: `pnpm check`
+4. Update documentation if needed
+5. Create PR with:
+   - Clear description
+   - Screenshots/videos if visual changes
+   - Link to related issues
 
-export interface ComponentNameProps {
-  // Props...
-}
+## 🎨 Theme Development
 
-export const ComponentName = React.forwardRef<HTMLElement, ComponentNameProps>((props, ref) => {
-  const theme = useTheme();
+When modifying the theme system:
 
-  return (
-    // Component JSX...
-  );
-});
+1. Update types in `src/theme/types.ts`
+2. Modify CSS variables in `src/styles/globals.css`
+3. Update `ThemeProvider` if needed
+4. Add tests for new theme features
+5. Document changes in stories
 
-ComponentName.displayName = 'ComponentName';
-```
+## 📝 Documentation
 
-3. Add tests:
+Keep documentation up to date:
 
-```tsx
-import { render, screen } from '@testing-library/react'
-import { ComponentName } from './ComponentName'
-import { ThemeProvider } from '../../theme'
+1. Update component stories
+2. Modify README if needed
+3. Update this guide for process changes
+4. Add JSDoc comments to code
 
-describe('ComponentName', () => {
-  it('renders with default theme', () => {
-    render(
-      <ThemeProvider>
-        <ComponentName />
-      </ThemeProvider>
-    )
-  })
-
-  it('applies custom theme', () => {
-    const theme = {
-      colors: {
-        primary: {
-          500: '100 200 300',
-        },
-      },
-    }
-
-    render(
-      <ThemeProvider theme={theme}>
-        <ComponentName />
-      </ThemeProvider>
-    )
-  })
-})
-```
-
-## Testing
-
-1. **Unit Tests**
-
-```bash
-pnpm test          # Run tests in watch mode
-pnpm test:coverage # Run tests with coverage
-```
-
-2. **E2E Tests**
-
-```bash
-pnpm test:e2e    # Run E2E tests
-pnpm test:e2e:ui # Run E2E tests with UI
-```
-
-3. **Visual Tests**
-
-```bash
-pnpm build-storybook # Build Storybook
-pnpm storybook      # Run Storybook
-```
-
-## Theming System
-
-The theming system uses CSS variables and Tailwind CSS. Key files:
-
-1. `src/theme/ThemeProvider.tsx`: Theme context and provider
-2. `src/styles/globals.css`: Default theme variables
-3. `tailwind.config.js`: Tailwind configuration
-
-### Adding Theme Variables
-
-1. Add the variable to `globals.css`:
-
-```css
-:root {
-  --new-variable: value;
-}
-```
-
-2. Add to Tailwind config:
-
-```js
-module.exports = {
-  theme: {
-    extend: {
-      // Add your extension
-    },
-  },
-}
-```
-
-3. Add to ThemeProvider interface:
-
-```ts
-export interface ThemeConfig {
-  // Add your new theme option
-}
-```
-
-## Release Process
+## 🚀 Release Process
 
 1. Update version:
 
@@ -197,39 +144,38 @@ pnpm version <patch|minor|major>
 
 ```bash
 pnpm build
-pnpm test
-pnpm test:e2e
+pnpm test:all
 ```
 
-3. Publish:
+3. Create release PR:
 
-```bash
-pnpm publish
-```
+- Update CHANGELOG.md
+- Include breaking changes
+- List new features
+- Document bug fixes
 
-## Code Style
+## 🎯 Best Practices
 
-- Follow the ESLint configuration
-- Use Prettier for formatting
-- Run `pnpm format` before committing
+### Accessibility
 
-## Best Practices
+- WCAG 2.1 AA compliance
+- Keyboard navigation
+- Screen reader support
+- Color contrast (4.5:1 minimum)
+- Proper ARIA attributes
 
-1. **Accessibility**
+### Performance
 
-   - Include proper ARIA attributes
-   - Support keyboard navigation
-   - Test with screen readers
-   - Maintain proper color contrast
+- Keep bundle size minimal
+- Use proper memoization
+- Implement tree-shaking
+- Monitor bundle size
 
-2. **Performance**
+### Code Style
 
-   - Keep bundle size minimal
-   - Implement proper memoization
-   - Use tree-shakeable exports
+- Follow ESLint rules
+- Use Prettier formatting
+- Follow naming conventions
+- Write clear comments
 
-3. **Documentation**
-   - Include JSDoc comments
-   - Document all props
-   - Provide usage examples
-   - Include accessibility notes
+Need help? Join our [Discord](your-discord-link) or open an issue!

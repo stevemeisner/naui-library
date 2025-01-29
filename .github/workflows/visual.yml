@@ -6,77 +6,97 @@ on:
   push:
     branches: [main]
 
+env:
+  CI: true
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+  NODE_ENV: test
+
 jobs:
   visual:
     runs-on: ubuntu-latest
-    env:
-      PNPM_HOME: ${{ github.workspace }}/.pnpm-store
-      CI: ''
-      NPM_CONFIG_FROZEN_LOCKFILE: false
-      PNPM_FROZEN_LOCKFILE: false
-
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '18.x'
+          node-version: '20'
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v3
         with:
           version: 8
           run_install: false
 
-      # Cache management
       - name: Get pnpm store directory
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - name: Cache pnpm store
-        uses: actions/cache@v3
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Cache node_modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            node_modules
-            ~/.cache/Cypress
-            ~/.cache/ms-playwright
-            ~/.cache/puppeteer
-          key: ${{ runner.os }}-modules-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-modules-
-
       - name: Install dependencies
-        shell: bash
-        run: |
-          if [ ! -d "node_modules" ]; then
-            echo "Installing dependencies without frozen lockfile..."
-            pnpm config set frozen-lockfile false
-            pnpm install --no-frozen-lockfile --ignore-scripts
-            echo "Running postinstall scripts..."
-            pnpm rebuild
-          else
-            echo "Using cached node_modules"
-          fi
+        run: pnpm install
 
       - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Install http-server
+        run: pnpm add -D http-server
+
+      - name: Build Storybook
+        run: pnpm build-storybook
+
+      - name: Start Storybook static server
         run: |
-          if [ ! -d "~/.cache/ms-playwright" ]; then
-            pnpm exec playwright install --with-deps chromium
-          else
-            echo "Using cached Playwright browsers"
-          fi
+          # Install netcat for port checking
+          sudo apt-get update && sudo apt-get install -y netcat-openbsd
+
+          npx http-server storybook-static -p 6006 &
+          echo $! > .server-pid
+
+          # Wait for server to be ready
+          echo "Waiting for Storybook static server..."
+          timeout=30
+          while ! nc -z localhost 6006; do
+            if [ $timeout -le 0 ]; then
+              echo "Timed out waiting for static server"
+              kill $(cat .server-pid)
+              exit 1
+            fi
+            timeout=$((timeout-1))
+            sleep 1
+          done
+          echo "✅ Static server is ready!"
 
       - name: Run visual tests
-        run: pnpm exec playwright test --project=chromium-visual
+        id: visual-test
+        continue-on-error: true
+        run: |
+          if compgen -G "e2e/**/*-snapshots/" > /dev/null; then
+            echo "Running visual comparison tests..."
+            PLAYWRIGHT_TEST_BASE_URL=http://localhost:6006 pnpm exec playwright test e2e/**/*.visual.ts --project=chromium-visual
+          else
+            echo "No existing snapshots found. Generating baseline..."
+            PLAYWRIGHT_TEST_BASE_URL=http://localhost:6006 pnpm exec playwright test e2e/**/*.visual.ts --project=chromium-visual --update-snapshots
+            echo "has_new_snapshots=true" >> $GITHUB_OUTPUT
+          fi
+        env:
+          DEBUG: pw:webserver
+
+      - name: Stop static server
+        if: always()
+        run: |
+          if [ -f .server-pid ]; then
+            kill $(cat .server-pid) || true
+            rm .server-pid
+          fi
 
       - name: Upload visual test results
         if: always()
@@ -86,4 +106,75 @@ jobs:
           path: |
             test-results
             playwright-report
+            e2e/**/*-snapshots/
           retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Create Visual Test Summary
+        if: always() && github.event_name == 'pull_request'
+        id: visual-summary
+        run: |
+          echo "Creating visual test summary..."
+
+          # Get test results
+          RESULTS=$(cat playwright-report/results.json 2>/dev/null || echo '{"stats":{"total":0,"passed":0,"failed":0,"skipped":0}}')
+
+          # Create summary markdown
+          echo "## 🎨 Visual Test Results" > visual-summary.md
+          echo "" >> visual-summary.md
+
+          if [ "${{ steps.visual-test.outputs.has_new_snapshots }}" = "true" ]; then
+            echo "✨ **Generated new baseline snapshots**" >> visual-summary.md
+            echo "Please review the uploaded artifacts to verify the baseline images." >> visual-summary.md
+          else
+            echo "### Test Statistics" >> visual-summary.md
+            echo "- Total: $(echo $RESULTS | jq -r '.stats.total')" >> visual-summary.md
+            echo "- ✅ Passed: $(echo $RESULTS | jq -r '.stats.passed')" >> visual-summary.md
+            echo "- ❌ Failed: $(echo $RESULTS | jq -r '.stats.failed')" >> visual-summary.md
+            echo "- ⏭️ Skipped: $(echo $RESULTS | jq -r '.stats.skipped')" >> visual-summary.md
+
+            if [ "$(echo $RESULTS | jq -r '.stats.failed')" != "0" ]; then
+              echo "" >> visual-summary.md
+              echo "### 🔍 Visual Differences Detected" >> visual-summary.md
+              echo "Please review the uploaded artifacts to see the differences." >> visual-summary.md
+
+              # Add links to the specific diffs
+              echo "" >> visual-summary.md
+              echo "#### Visual Diffs" >> visual-summary.md
+              echo "Download the artifacts to see:" >> visual-summary.md
+              for file in test-results/**/*-diff.png; do
+                if [ -f "$file" ]; then
+                  echo "- ${file##*/}" >> visual-summary.md
+                fi
+              done
+            fi
+          fi
+
+          echo "" >> visual-summary.md
+          echo "### 📊 Detailed Reports" >> visual-summary.md
+          echo "- [Full Visual Test Report](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})" >> visual-summary.md
+
+      - name: Find Comment
+        uses: peter-evans/find-comment@v3
+        if: always() && github.event_name == 'pull_request'
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '## 🎨 Visual Test Results'
+
+      - name: Create or Update Comment
+        uses: peter-evans/create-or-update-comment@v4
+        if: always() && github.event_name == 'pull_request'
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-file: visual-summary.md
+          edit-mode: replace
+
+      - name: Cleanup build artifacts
+        if: always()
+        run: |
+          rm -rf test-results
+          rm -rf playwright-report
+          rm -f visual-summary.md

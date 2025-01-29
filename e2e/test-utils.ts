@@ -17,10 +17,29 @@ type AriaRole =
   | 'dialog'
 
 /**
+ * Helper to wait for Storybook to be ready
+ */
+export const waitForStorybook = async (page: Page) => {
+  await page.waitForSelector('#storybook-root', { state: 'attached' })
+  // Wait for any animations/transitions to complete
+  await page.waitForTimeout(500)
+}
+
+/**
+ * Helper to navigate to a specific story
+ */
+export const goToStory = async (page: Page, storyId: string) => {
+  await page.goto(`/iframe.html?id=${storyId}`)
+  await waitForStorybook(page)
+}
+
+/**
  * Run accessibility tests for a component
  */
 export const testAccessibility = async (page: Page) => {
+  await waitForStorybook(page)
   const results = await new AxeBuilder({ page })
+    .include('#storybook-root')
     .options({
       runOnly: {
         type: 'tag',
