@@ -1,5 +1,5 @@
 {
-  "name": "@your-org/ui-library",
+  "name": "@naui-react/core",
   "version": "0.1.0",
   "description": "A modern React component library built with TypeScript, Storybook, and TailwindCSS",
   "private": false,
@@ -13,7 +13,8 @@
   ],
   "sideEffects": false,
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "dev": "storybook dev -p 6006",
